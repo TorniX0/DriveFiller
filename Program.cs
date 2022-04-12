@@ -13,6 +13,10 @@ namespace DriveFiller
         private static readonly string logFileName = Regex.Replace($"DriveFiller-{DateTime.Now}.log", "[\\/:*?\"<>|]", "-").Replace(" ", "_");
         private static readonly string logPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), logFileName);
 
+        private static int minSize = 524288000;
+        private static int maxSize = 1073741824;
+        private static int fixedSize = 524288000;
+
         private static byte[] GenerateRandomBytes(int size)
         {
             char[] characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_".ToCharArray();
@@ -44,6 +48,53 @@ namespace DriveFiller
             };
         }
 
+        private static bool YesNo(string question)
+        {
+            Console.Write($"{question} (Y/N): ");
+            string? answerText = Console.ReadLine();
+            return answerText?.ToLower() == "y";
+        }
+
+        private static bool YesNoLoop(string question)
+        {
+            Console.Write($"{question} (Y/N): ");
+            string? key = Console.ReadLine();
+
+            while (true)
+            {
+                if (key != null && key.ToLower() is "y" or "n") break;
+                else
+                {
+                    Console.WriteLine();
+                    Console.Write($"{question} (Y/N): ");
+                    key = Console.ReadLine();
+                }
+            }
+
+            return key.ToLower() switch
+            {
+                "y" => true,
+                "n" => false,
+                _ => false,
+            };
+        }
+
+        private static string CustomQuestion(string question)
+        {
+            Console.Write(question);
+            string? driveLetter = Console.ReadLine();
+
+            if (driveLetter != null) return driveLetter;
+            else return string.Empty;
+        }
+
+        private static void SpaceOutText(string text)
+        {
+            Console.WriteLine();
+            Console.WriteLine(text);
+            Console.WriteLine();
+        }
+
 
         private static void Main(string[] args)
         {
@@ -53,19 +104,43 @@ namespace DriveFiller
 
             DriveInfo[] allDrives = DriveInfo.GetDrives();
 
-            Console.Write("Drive letter for the drive you want to fill: ");
+            string driveLetter = CustomQuestion("Drive letter for the drive you want to fill: ");
+            bool log = YesNo("Log the results?");
+            bool random = YesNo("Variable file-size?");
 
-            string? driveLetter = Console.ReadLine();
+            if (random)
+            {
+                string minValue = CustomQuestion("Minimum value for the variable file-size (measured in MB): ");
+                string maxValue = CustomQuestion("Maximum value for the variable file-size (measured in MB): ");
 
-            Console.Write("Log the results? (Y/N): ");
+                if (!int.TryParse(minValue, out minSize) || !int.TryParse(maxValue, out maxSize))
+                {
+                    Console.WriteLine("Invalid values. Exiting...");
+                    Thread.Sleep(3000);
+                    return;
+                }
 
-            string? logString = Console.ReadLine();
+                maxSize *= 1024 * 1024;
+                minSize *= 1024 * 1024;
+            }
+            else
+            {
+                string fixedValue = CustomQuestion("Fixed value for the file-size (measured in MB): ");
 
-            bool log = logString is not null && logString.ToLower() is "y";
+                if (!int.TryParse(fixedValue, out fixedSize))
+                {
+                    Console.WriteLine("Invalid values. Exiting...");
+                    Thread.Sleep(3000);
+                    return;
+                }
+
+                fixedSize *= 1024 * 1024;
+            }
+
 
             foreach (DriveInfo _drv in allDrives)
             {
-                if (driveLetter is null) break;
+                if (driveLetter == string.Empty) break;
                 if (_drv.Name.Contains(driveLetter))
                 {
                     drive = _drv;
@@ -73,73 +148,59 @@ namespace DriveFiller
                 }
             }
 
-            if (drive is null)
+            if (drive == null)
             {
-                Console.WriteLine("Drive does not exist. Exiting...");
+                SpaceOutText("Drive does not exist. Exiting...");
                 Thread.Sleep(3000);
                 return;
             }
             else
             {
                 Console.Clear();
-                Console.Write("The drive filler can be stopped anytime by pressing any key on the command prompt window, keep in mind this probably does stress your drive, do you wish to continue? (Y/N): ");
-                string? key = Console.ReadLine();
 
-                while (true)
-                {
-                    if (key is not null && key.ToLower() is "y" or "n") break;
-                    else
-                    {
-                        Console.WriteLine();
-                        Console.Write("The drive filler can be stopped anytime by pressing any key on the command prompt window, keep in mind this probably does stress your drive, do you wish to continue? (Y/N): ");
-                        key = Console.ReadLine();
-                    }
-                }
+                bool continueAnswer = YesNoLoop("The drive filler can be stopped anytime by pressing any key on the command prompt window, keep in mind this probably does stress your drive, do you wish to continue?");
 
-                switch (key.ToLower())
-                {
-                    case "y":
-                        break;
-                    case "n":
-                        return;
-                    default:
-                        return;
-                }
+                if (!continueAnswer) return;
 
                 Console.Clear();
 
                 if (log) 
                 {
                     logger.AppendLine($"Started drive filler on drive {drive.Name} at {DateTime.Now}"); 
-                    logger.AppendLine($"Write(s):");
+                    logger.AppendLine("Write(s):");
                 }
 
                 Random r = new();
                 int counter = 0;
 
-                while (drive.AvailableFreeSpace > 594000000)
+                while (true)
                 {
                     counter++;
 
                     string name = GenerateRandomName();
 
-                    if (nameHistory.Contains(name))
+                    bool existsAlready = File.Exists(name) && nameHistory.Contains(name);
+
+                    while (existsAlready)
                     {
-                        while (nameHistory.Contains(name))
-                        {
-                            name = GenerateRandomName();
-                        }
+                        name = GenerateRandomName();
                     }
 
                     nameHistory.Add(name);
 
-                    int rand = r.Next(9999999, 99999999);
+                    int rand = 0;
+
+                    if (random) rand = r.Next(minSize, maxSize);
+                    else rand = fixedSize;
+
+                    byte[] bytes = GenerateRandomBytes(rand);
+
+                    if (drive.AvailableFreeSpace < rand) break;
 
                     stpWatch.Start();
 
                     using (var fs = new FileStream(drive.RootDirectory + name, FileMode.CreateNew))
                     {
-                        byte[] bytes = GenerateRandomBytes(rand);
                         fs.Write(bytes, 0, bytes.Length);
                     }
 
@@ -157,9 +218,7 @@ namespace DriveFiller
 
             Console.Beep();
 
-            Console.WriteLine();
-            Console.WriteLine("Cleaning up generated files...");
-            Console.WriteLine();
+            SpaceOutText("Cleaning up generated files...");
 
             for (int i = 0; i < nameHistory.Count; i++)
             {
@@ -178,10 +237,9 @@ namespace DriveFiller
             {
                 logger.AppendLine($"Finished at {DateTime.Now}");
                 File.WriteAllText(logPath, logger.ToString());
-                Console.WriteLine($"Saved log file in {logPath}!");
+                SpaceOutText($"Saved log file in {logPath}!");
             }
 
-            Console.WriteLine();
             Console.WriteLine("Finished! Press any key to exit...");
 
             Console.ReadKey();
