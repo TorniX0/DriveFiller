@@ -4,7 +4,7 @@
 
 DriveFiller is a simple open-source application that fills your drive and has customizable file sizes.
 
-It can be used as a benchmark, you can see the time it takes until files are getting written (measured in milliseconds).
+It can be used as a "benchmark", you can see the time it takes to finish writing a file (measured in milliseconds).
 
 There's also the option to log everything into a `.log` file.
 
