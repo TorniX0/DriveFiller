@@ -1,3 +1,5 @@
+<img src="https://github.com/TorniX0/DriveFiller/raw/main/logo.ico" width="150" height="150">
+
 # DriveFiller
 
 DriveFiller is a simple open-source application that fills your drive.
