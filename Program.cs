@@ -188,14 +188,14 @@ namespace DriveFiller
 
                     nameHistory.Add(name);
 
-                    int rand = 0;
+                    int size = 0;
 
-                    if (random) rand = r.Next(minSize, maxSize);
-                    else rand = fixedSize;
+                    if (random) size = r.Next(minSize, maxSize);
+                    else size = fixedSize;
 
-                    byte[] bytes = GenerateRandomBytes(rand);
+                    byte[] bytes = GenerateRandomBytes(size);
 
-                    if (drive.AvailableFreeSpace < rand) break;
+                    if (drive.AvailableFreeSpace < size) break;
 
                     stpWatch.Start();
 
@@ -206,9 +206,9 @@ namespace DriveFiller
 
                     stpWatch.Stop();
 
-                    Console.WriteLine($"Written {name} of size {ConvertStorage(rand)} in roughly {stpWatch.ElapsedMilliseconds}ms ({counter})");
+                    Console.WriteLine($"Written {name} of size {ConvertStorage(size)} in roughly {stpWatch.ElapsedMilliseconds}ms ({counter})");
 
-                    if (log) logger.AppendLine($"Written {ConvertStorage(rand)} in roughly {stpWatch.ElapsedMilliseconds}ms ({counter})");
+                    if (log) logger.AppendLine($"Written {ConvertStorage(size)} in roughly {stpWatch.ElapsedMilliseconds}ms ({counter})");
 
                     stpWatch.Reset();
 
