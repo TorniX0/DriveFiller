@@ -115,7 +115,14 @@ namespace DriveFiller
 
                 if (!int.TryParse(minValue, out minSize) || !int.TryParse(maxValue, out maxSize))
                 {
-                    Console.WriteLine("Invalid values. Exiting...");
+                    Console.WriteLine("Invalid value(s). Exiting...");
+                    Thread.Sleep(3000);
+                    return;
+                }
+
+                if (minSize <= 0 || maxSize <= 0)
+                {
+                    Console.WriteLine("Invalid value(s). Exiting...");
                     Thread.Sleep(3000);
                     return;
                 }
@@ -129,7 +136,14 @@ namespace DriveFiller
 
                 if (!int.TryParse(fixedValue, out fixedSize))
                 {
-                    Console.WriteLine("Invalid values. Exiting...");
+                    Console.WriteLine("Invalid value(s). Exiting...");
+                    Thread.Sleep(3000);
+                    return;
+                }
+
+                if (fixedSize <= 0)
+                {
+                    Console.WriteLine("Invalid value(s). Exiting...");
                     Thread.Sleep(3000);
                     return;
                 }
