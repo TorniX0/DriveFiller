@@ -41,9 +41,9 @@ namespace DriveFiller
         {
             return size switch
             {
-                >= 1024 and < 1024000 => string.Concat((size / 1024d).ToString("N1"), " KB"),
-                >= 1024000 and < 1024000000 => string.Concat((size / 1024d / 1024d).ToString("N1"), " MB"),
-                >= 1024000000 => string.Concat((size / 1024d / 1024d / 1024d).ToString("N1"), " GB"),
+                >= 1024 and < 1024000 => string.Concat(size / 1024, " KB"),
+                >= 1024000 and < 1024000000 => string.Concat(size / 1024 / 1024, " MB"),
+                >= 1024000000 => string.Concat(size / 1024 / 1024 / 1024, " GB"),
                 _ => string.Concat(size, " B"),
             };
         }
@@ -110,17 +110,13 @@ namespace DriveFiller
 
             if (random)
             {
-                string minValue = CustomQuestion($"Minimum value for the variable file-size (measured in MB) (default {ConvertStorage(minSize)} MB): ");
-                string maxValue = CustomQuestion($"Maximum value for the variable file-size (measured in MB) (default {ConvertStorage(maxSize)} MB): ");
+                string minValue = CustomQuestion($"Minimum value for the variable file-size (measured in MB) (default {ConvertStorage(minSize)}): ");
+                string maxValue = CustomQuestion($"Maximum value for the variable file-size (measured in MB) (default {ConvertStorage(maxSize)}): ");
 
-                if (!int.TryParse(minValue, out minSize) || !int.TryParse(maxValue, out maxSize))
-                {
-                    Console.WriteLine("Invalid value(s). Exiting...");
-                    Thread.Sleep(3000);
-                    return;
-                }
+                bool parse = !int.TryParse(minValue, out minSize) || !int.TryParse(maxValue, out maxSize);
+                bool negative = minSize <= 0 || maxSize <= 0;
 
-                if (minSize <= 0 || maxSize <= 0)
+                if (parse || negative)
                 {
                     Console.WriteLine("Invalid value(s). Exiting...");
                     Thread.Sleep(3000);
@@ -132,16 +128,12 @@ namespace DriveFiller
             }
             else
             {
-                string fixedValue = CustomQuestion($"Fixed value for the file-size (measured in MB) (default {ConvertStorage(fixedSize)} MB): ");
+                string fixedValue = CustomQuestion($"Fixed value for the file-size (measured in MB) (default {ConvertStorage(fixedSize)}): ");
 
-                if (!int.TryParse(fixedValue, out fixedSize))
-                {
-                    Console.WriteLine("Invalid value(s). Exiting...");
-                    Thread.Sleep(3000);
-                    return;
-                }
+                bool parse = !int.TryParse(fixedValue, out fixedSize);
+                bool negative = fixedSize <= 0;
 
-                if (fixedSize <= 0)
+                if (parse || negative)
                 {
                     Console.WriteLine("Invalid value(s). Exiting...");
                     Thread.Sleep(3000);
