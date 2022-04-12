@@ -113,8 +113,11 @@ namespace DriveFiller
                 string minValue = CustomQuestion($"Minimum value for the variable file-size (measured in MB) (default {ConvertStorage(minSize)}): ");
                 string maxValue = CustomQuestion($"Maximum value for the variable file-size (measured in MB) (default {ConvertStorage(maxSize)}): ");
 
-                bool parse = !int.TryParse(minValue, out minSize) || !int.TryParse(maxValue, out maxSize);
-                bool negative = minSize <= 0 || maxSize <= 0;
+                float minFloat = 0f;
+                float maxFloat = 0f;
+
+                bool parse = !float.TryParse(minValue, out minFloat) || !float.TryParse(maxValue, out maxFloat);
+                bool negative = minFloat <= 0f || maxFloat <= 0f;
 
                 if (parse || negative)
                 {
@@ -123,14 +126,16 @@ namespace DriveFiller
                     return;
                 }
 
-                maxSize *= 1024 * 1024;
-                minSize *= 1024 * 1024;
+                maxSize = (int)(maxFloat * 1024f * 1024f);
+                minSize = (int)(minFloat * 1024f * 1024f);
             }
             else
             {
                 string fixedValue = CustomQuestion($"Fixed value for the file-size (measured in MB) (default {ConvertStorage(fixedSize)}): ");
 
-                bool parse = !int.TryParse(fixedValue, out fixedSize);
+                float fixedFloat = 0f;
+
+                bool parse = !float.TryParse(fixedValue, out fixedFloat);
                 bool negative = fixedSize <= 0;
 
                 if (parse || negative)
@@ -140,7 +145,7 @@ namespace DriveFiller
                     return;
                 }
 
-                fixedSize *= 1024 * 1024;
+                fixedSize = (int)(fixedFloat * 1024f * 1024f);
             }
 
 
@@ -212,9 +217,11 @@ namespace DriveFiller
 
                     stpWatch.Stop();
 
-                    Console.WriteLine($"Written {name} of size {ConvertStorage(size)} in roughly {stpWatch.ElapsedMilliseconds}ms ({counter})");
+                    TimeSpan ts = stpWatch.Elapsed;
 
-                    if (log) logger.AppendLine($"Written {ConvertStorage(size)} in roughly {stpWatch.ElapsedMilliseconds}ms ({counter})");
+                    Console.WriteLine($"Written {name} of size {ConvertStorage(size)} in roughly {ts.TotalMilliseconds}ms ({counter})");
+
+                    if (log) logger.AppendLine($"Written {ConvertStorage(size)} in roughly {ts.TotalMilliseconds}ms ({counter})");
 
                     stpWatch.Reset();
 
@@ -234,7 +241,9 @@ namespace DriveFiller
 
                 stpWatch.Stop();
 
-                Console.WriteLine($"Deleted {nameHistory.ElementAt(i)} in roughly {stpWatch.ElapsedMilliseconds}ms ({i + 1})");
+                TimeSpan ts = stpWatch.Elapsed;
+
+                Console.WriteLine($"Deleted {nameHistory.ElementAt(i)} in roughly {ts.TotalMilliseconds}ms ({i + 1})");
 
                 stpWatch.Reset();
             }
