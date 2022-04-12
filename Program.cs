@@ -110,8 +110,8 @@ namespace DriveFiller
 
             if (random)
             {
-                string minValue = CustomQuestion("Minimum value for the variable file-size (measured in MB): ");
-                string maxValue = CustomQuestion("Maximum value for the variable file-size (measured in MB): ");
+                string minValue = CustomQuestion($"Minimum value for the variable file-size (measured in MB) (default {ConvertStorage(minSize)} MB): ");
+                string maxValue = CustomQuestion($"Maximum value for the variable file-size (measured in MB) (default {ConvertStorage(maxSize)} MB): ");
 
                 if (!int.TryParse(minValue, out minSize) || !int.TryParse(maxValue, out maxSize))
                 {
@@ -132,7 +132,7 @@ namespace DriveFiller
             }
             else
             {
-                string fixedValue = CustomQuestion("Fixed value for the file-size (measured in MB): ");
+                string fixedValue = CustomQuestion($"Fixed value for the file-size (measured in MB) (default {ConvertStorage(fixedSize)} MB): ");
 
                 if (!int.TryParse(fixedValue, out fixedSize))
                 {
@@ -172,7 +172,7 @@ namespace DriveFiller
             {
                 Console.Clear();
 
-                bool continueAnswer = YesNoLoop("The drive filler can be stopped anytime by pressing any key on the command prompt window, keep in mind this probably does stress your drive, do you wish to continue?");
+                bool continueAnswer = YesNoLoop("The drive filler can be stopped anytime by pressing any key on the command prompt window, keep in mind, use the program at your own risk, do you wish to continue?");
 
                 if (!continueAnswer) return;
 
