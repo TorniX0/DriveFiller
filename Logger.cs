@@ -8,13 +8,14 @@ namespace DriveFiller
     internal static class Logger
     {
         private static StringBuilder logger = new();
-        internal static bool active { get; private set; } = false;
+        private static bool active = false;
 
-        private static string logFileName { 
-            get 
-            { 
-                return Regex.Replace($"DriveFiller-{DateTime.Now}.log", "[\\/:*?\"<>|]", "-").Replace(" ", "_"); 
-            } 
+        private static string logFileName
+        {
+            get
+            {
+                return Regex.Replace($"DriveFiller-{DateTime.Now}.log", "[\\/:*?\"<>|]", "-").Replace(" ", "_");
+            }
         }
 
         internal static void SetActive(bool value)
@@ -26,20 +27,51 @@ namespace DriveFiller
         private static string GetLogPath()
         {
             string? dir = Path.GetDirectoryName(Environment.ProcessPath);
-            if (dir != null) return Path.Combine(dir, logFileName);
-            else return string.Empty;
+
+            if (dir == null)
+            {
+                return Path.GetTempPath();
+            }
+            
+            return Path.Combine(dir, logFileName);
         }
 
         internal static void AddLog(string info)
         {
+            if (!active)
+            {
+                return;
+            }
+
             logger.AppendLine(info);
+        }
+
+        internal static void AddSpacedLog(string info)
+        {
+            if (!active)
+            {
+                return;
+            }
+
+            logger.AppendLine();
+            logger.AppendLine(info);
+            logger.AppendLine();
         }
 
         internal static void WriteLogToDisk(string path = "")
         {
-            if (path == string.Empty) path = GetLogPath();
+            if (!active)
+            {
+                return;
+            }
+
+            if (path == string.Empty)
+            {
+                path = GetLogPath();
+            }
+
             File.WriteAllText(path, logger.ToString());
-            StandardMessages.SpaceOutText($"Saved log file in {path}!");
+            InputHelper.SpaceOutText($"Saved log file in {path}!");
         }
 
     }

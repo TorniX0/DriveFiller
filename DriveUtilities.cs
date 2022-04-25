@@ -1,41 +1,49 @@
-﻿namespace DriveFiller
+﻿using System.Linq;
+
+namespace DriveFiller
 {
     internal static class DriveUtilities
     {
         private static DriveInfo[] allDrives = DriveInfo.GetDrives();
-        private static HashSet<string> nameHistory = new();
+        private static Dictionary<string, int> fileHistory = new();
         internal static int minSize { get; private set; } = 524288000;
         internal static int maxSize { get; private set; } = 1073741824;
         internal static int fixedSize { get; private set; } = 524288000;
 
-        internal static DriveInfo? GetDrive(string driveLetter)
+        internal static DriveInfo? GetDrive(string input)
         {
-            foreach (DriveInfo _drv in allDrives)
+            if (!input.All(c => char.IsAscii(c) && char.IsLetter(c)) || input.Length != 1)
             {
-                if (driveLetter == string.Empty) return null;
-                if (_drv.Name.Contains(driveLetter))
+                return null;
+            }
+
+            foreach (DriveInfo drive in allDrives)
+            {
+                if (drive.Name.Contains(input))
                 {
-                    return _drv;
+                    return drive;
                 }
             }
 
             return null;
         }
 
-        private static void AddToNameHistory(string name)
+        private static void AddToFileHistory(string name, int size)
         {
-            bool existsAlready = File.Exists(name) && nameHistory.Contains(name);
+            bool existsAlready = File.Exists(name) && fileHistory.ContainsKey(name);
 
             while (existsAlready)
             {
-                name = Helper.GenerateRandomName();
+                name = UtilsHelper.GenerateRandomName();
             }
 
-            nameHistory.Add(name);
+            fileHistory.Add(name, size);
         }
 
-        internal static void FillDrive(bool variableSize, DriveInfo drive)
+        internal static async Task FillDrive(bool variableSize, DriveInfo drive)
         {
+            Logger.AddSpacedLog("Write(s):");
+
             Random r = new();
             int counter = 0;
 
@@ -43,82 +51,71 @@
             {
                 counter++;
 
-                string name = Helper.GenerateRandomName();
+                string name = UtilsHelper.GenerateRandomName();
 
-                AddToNameHistory(name);
+                int size = variableSize ? r.Next(minSize, maxSize) : fixedSize;
 
-                int size = 0;
+                AddToFileHistory(name, size);
 
-                if (variableSize) size = r.Next(minSize, maxSize);
-                else size = fixedSize;
+                byte[] bytes = UtilsHelper.GenerateRandomBytes(size);
 
-                byte[] bytes = Helper.GenerateRandomBytes(size);
-
-                if (drive.AvailableFreeSpace < size) break;
-
-                var timeToWrite = Helper.ExecutionTime(() =>
+                if (drive.AvailableFreeSpace < size)
                 {
-                    using (var fs = new FileStream(drive.RootDirectory + name, FileMode.CreateNew))
+                    break;
+                }
+
+                var timeToWrite = await UtilsHelper.ExecutionTimeAsync(async Task() =>
+                {
+                    using (var fs = new FileStream(drive.RootDirectory + name, FileMode.CreateNew, FileAccess.Write, FileShare.None, bytes.Length, FileOptions.Asynchronous))
                     {
-                        fs.Write(bytes, 0, bytes.Length);
+                        await fs.WriteAsync(bytes, 0, bytes.Length);
                     }
                 });
 
-                Console.WriteLine($"Written {name} of size {Helper.ConvertStorage(size)} in roughly {timeToWrite}ms ({counter})");
+                Console.WriteLine($"Written {name} of size {UtilsHelper.ConvertStorage(size)} in roughly {timeToWrite}ms ({counter})");
 
-                if (Logger.active) Logger.AddLog($"Written {Helper.ConvertStorage(size)} in roughly {timeToWrite}ms ({counter})");
+                Logger.AddLog($"Written {name} of size {UtilsHelper.ConvertStorage(size)} in roughly {timeToWrite}ms ({counter})");
 
-                if (Console.KeyAvailable && Console.ReadKey(true).Key != default) break;
+                if (Console.KeyAvailable && Console.ReadKey(true).Key != default)
+                {
+                    break;
+                }
             }
 
             Console.Beep();
         }
 
-        internal static void CleanupMess(DriveInfo drive)
+        internal static async Task CleanupMess(DriveInfo drive)
         {
-            StandardMessages.SpaceOutText("Cleaning up generated files...");
+            Logger.AddSpacedLog("Delete(s):");
 
-            for (int i = 0; i < nameHistory.Count; i++)
+            InputHelper.SpaceOutText("Cleaning up generated files...");
+
+            for (int i = 0; i < fileHistory.Keys.Count; i++)
             {
-                var timeToDelete = Helper.ExecutionTime(() =>
+                var timeToDelete = await UtilsHelper.ExecutionTimeAsync(async Task() =>
                 {
-                    File.Delete(drive.RootDirectory + nameHistory.ElementAt(i));
+                    using (var stream = new FileStream(drive.RootDirectory + fileHistory.Keys.ElementAt(i), FileMode.Open, FileAccess.Read, FileShare.None, 1, FileOptions.DeleteOnClose | FileOptions.Asynchronous))
+                    {
+                        await stream.FlushAsync();
+                    }
                 });
 
-                Console.WriteLine($"Deleted {nameHistory.ElementAt(i)} in roughly {timeToDelete}ms ({i + 1})");
+                Console.WriteLine($"Deleted {fileHistory.Keys.ElementAt(i)} of size {UtilsHelper.ConvertStorage(fileHistory.Values.ElementAt(i))} in roughly {timeToDelete}ms ({i + 1})");
+
+                Logger.AddLog($"Deleted {fileHistory.Keys.ElementAt(i)} of size {UtilsHelper.ConvertStorage(fileHistory.Values.ElementAt(i))} in roughly {timeToDelete}ms ({i + 1})");
             }
         }
 
-        internal static void UpdateSizes(string value)
+        internal static void UpdateSizes(int value)
         {
-            float fixedFloat = 0f;
-
-            bool parse = !float.TryParse(value, out fixedFloat);
-            bool negative = fixedSize <= 0;
-
-            if (parse || negative)
-            {
-                StandardMessages.ExitApplication("Invalid value(s). Exiting...");
-            }
-
-            fixedSize = (int)(fixedFloat * 1024f * 1024f);
+            fixedSize = value * 1024 * 1024;
         }
 
-        internal static void UpdateSizes(string min, string max)
+        internal static void UpdateSizes(int min, int max)
         {
-            float minFloat = 0f;
-            float maxFloat = 0f;
-
-            bool parse = !float.TryParse(min, out minFloat) || !float.TryParse(max, out maxFloat);
-            bool negative = minFloat <= 0f || maxFloat <= 0f;
-
-            if (parse || negative)
-            {
-                StandardMessages.ExitApplication("Invalid value(s). Exiting...");
-            }
-
-            maxSize = (int)(maxFloat * 1024f * 1024f);
-            minSize = (int)(minFloat * 1024f * 1024f);
+            maxSize = max * 1024 * 1024;
+            minSize = min * 1024 * 1024;
         }
 
     }

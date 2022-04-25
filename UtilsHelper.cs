@@ -2,14 +2,23 @@
 
 namespace DriveFiller
 {
-    internal static class Helper
+    internal static class UtilsHelper
     {
-        private static Stopwatch watch = new();
 
         internal static double ExecutionTime(Action act)
         {
+            Stopwatch watch = new();
             watch.Restart();
             act.Invoke();
+            watch.Stop();
+            return watch.Elapsed.TotalMilliseconds;
+        }
+
+        internal static async Task<double> ExecutionTimeAsync(Func<Task> func)
+        {
+            Stopwatch watch = new();
+            watch.Restart();
+            await func.Invoke();
             watch.Stop();
             return watch.Elapsed.TotalMilliseconds;
         }

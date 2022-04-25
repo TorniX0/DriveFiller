@@ -2,24 +2,32 @@
 {
     internal static class Program
     {
-        private static void Main(string[] args)
+        private static async Task Main(string[] args)
         {
-            StandardMessages.SetWindowTitle("DriveFiller");
+            InputHelper.SetWindowTitle("DriveFiller");
 
-            string driveLetter = StandardMessages.AskQuestion("Drive letter for the drive you want to fill: ");
-            Logger.SetActive(StandardMessages.YesNo("Log the results?"));
-            bool random = StandardMessages.YesNo("Variable file-size?");
+            string driveLetter = InputHelper.GetAnswer("Drive letter for the drive you want to fill: ");
+            Logger.SetActive(InputHelper.YesNo("Log the results?"));
+            bool random = InputHelper.YesNo("Variable file-size?");
 
             if (random)
             {
-                string minValue = StandardMessages.AskQuestion($"Minimum value for the variable file-size (measured in MB) (default {Helper.ConvertStorage(DriveUtilities.minSize)}): ");
-                string maxValue = StandardMessages.AskQuestion($"Maximum value for the variable file-size (measured in MB) (default {Helper.ConvertStorage(DriveUtilities.maxSize)}): ");
+                int minValue = InputHelper.GetValidatedAnswer($"Minimum value for the variable file-size (measured in MB) (default {UtilsHelper.ConvertStorage(DriveUtilities.minSize)}): ", InputHelper.ValidInteger);
+                int maxValue = InputHelper.GetValidatedAnswer($"Maximum value for the variable file-size (measured in MB) (default {UtilsHelper.ConvertStorage(DriveUtilities.maxSize)}): ", InputHelper.ValidInteger);
+
+                while (minValue > maxValue)
+                {
+                    Console.WriteLine("Invalid answer. Minimum value is bigger than maximum. Please try again.");
+
+                    minValue = InputHelper.GetValidatedAnswer($"Minimum value for the variable file-size (measured in MB) (default {UtilsHelper.ConvertStorage(DriveUtilities.minSize)}): ", InputHelper.ValidInteger);
+                    maxValue = InputHelper.GetValidatedAnswer($"Maximum value for the variable file-size (measured in MB) (default {UtilsHelper.ConvertStorage(DriveUtilities.maxSize)}): ", InputHelper.ValidInteger);
+                }
 
                 DriveUtilities.UpdateSizes(minValue, maxValue);
             }
             else
             {
-                string fixedValue = StandardMessages.AskQuestion($"Fixed value for the file-size (measured in MB) (default {Helper.ConvertStorage(DriveUtilities.fixedSize)}): ");
+                int fixedValue = InputHelper.GetValidatedAnswer($"Fixed value for the file-size (measured in MB) (default {UtilsHelper.ConvertStorage(DriveUtilities.fixedSize)}): ", InputHelper.ValidInteger);
 
                 DriveUtilities.UpdateSizes(fixedValue);
             }
@@ -28,35 +36,42 @@
 
             if (drive == null)
             {
-                StandardMessages.ExitApplication("Drive does not exist. Exiting...");
+                InputHelper.ExitApplication("Drive does not exist. Exiting...");
                 return;
             }
 
             Console.Clear();
 
-            bool continueAnswer = StandardMessages.YesNoLoop("The drive filler can be stopped anytime by pressing any key on the command prompt window, keep in mind, use the program at your own risk, do you wish to continue?");
+            bool continueAnswer = InputHelper.YesNoLoop("The drive filler can be stopped anytime by pressing any key on the command prompt window, keep in mind, use the program at your own risk, do you wish to continue?");
 
-            if (!continueAnswer) return;
+            if (!continueAnswer)
+            {
+                InputHelper.ExitApplication("User cancelled action. Exiting...");
+                return;
+            }
 
             Console.Clear();
 
-            if (Logger.active) 
+            Logger.AddLog($"Started drive filler on drive {drive.Name} at {DateTime.Now}");
+            Logger.AddLog($"Settings: VARIABLE_FILESIZE={random};");
+            
+            if (random)
             {
-                Logger.AddLog($"Started drive filler on drive {drive.Name} at {DateTime.Now}");
-                Logger.AddLog("Write(s):");
+                Logger.AddLog($"MIN_SIZE={UtilsHelper.ConvertStorage(DriveUtilities.minSize)}; MAX_SIZE={UtilsHelper.ConvertStorage(DriveUtilities.maxSize)};");
+            }
+            else
+            {
+                Logger.AddLog($"FIXED_SIZE={UtilsHelper.ConvertStorage(DriveUtilities.fixedSize)}");
             }
 
-            DriveUtilities.FillDrive(random, drive);
+            await DriveUtilities.FillDrive(random, drive);
 
-            DriveUtilities.CleanupMess(drive);
+            await DriveUtilities.CleanupMess(drive);
 
-            if (Logger.active)
-            {
-                Logger.AddLog($"Finished at {DateTime.Now}");
-                Logger.WriteLogToDisk();
-            }
+            Logger.AddSpacedLog($"Finished at {DateTime.Now}");
+            Logger.WriteLogToDisk();
 
-            StandardMessages.ExitApplication("Finished the work!", true);
+            InputHelper.ExitApplication("Finished the work!", true);
         }
     }
 }
